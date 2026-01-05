@@ -60,7 +60,7 @@ This version includes a major backend overhaul to adopt modern Python practices,
     pip install -r requirements.txt
     ```
 
-**OR 
+**OR**
 ```bash
 pip install deepdir-cli
 ```
