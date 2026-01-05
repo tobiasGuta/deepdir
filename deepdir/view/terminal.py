@@ -174,25 +174,38 @@ class CLI:
 
     def last_path(self, index, length, current_job, all_jobs, rate, errors):
         percentage = int(index / length * 100) if length > 0 else 0
-        task = set_color("#", fore="cyan", style="bright") * int(percentage / 5)
-        task += " " * (20 - int(percentage / 5))
-        progress = f"{index}/{length}"
-
+        
+        term_width = shutil.get_terminal_size()[0]
+        
+        p_str = f"{index}/{length}"
+        r_str = f"{rate}/s"
+        pct_str = f"{percentage}%"
+        
         grean_job = set_color("job", fore="green", style="bright")
-        jobs = f"{grean_job}:{current_job}/{all_jobs}"
+        jobs_colored = f"{grean_job}:{current_job}/{all_jobs}"
 
         red_error = set_color("errors", fore="red", style="bright")
-        errors = f"{red_error}:{errors}"
+        errors_colored = f"{red_error}:{errors}"
 
-        progress_bar = f"[{task}] {str(percentage).rjust(2, chr(32))}% "
-        progress_bar += f"{progress.rjust(12, chr(32))} "
-        progress_bar += f"{str(rate).rjust(9, chr(32))}/s       "
-        progress_bar += f"{jobs.ljust(21, chr(32))} {errors}"
+        # Try full bar (20 chars)
+        bar_width = 20
+        task = set_color("#", fore="cyan", style="bright") * int(percentage / 5)
+        task += " " * (bar_width - int(percentage / 5))
+        
+        full_line = f"[{task}] {pct_str} {p_str} {r_str} {jobs_colored} {errors_colored}"
 
-        if len(clean_color(progress_bar)) >= shutil.get_terminal_size()[0]:
-            return
+        if len(clean_color(full_line)) >= term_width:
+             # Try reducing bar (10 chars)
+             bar_width = 10
+             task = set_color("#", fore="cyan", style="bright") * int(percentage / 10)
+             task += " " * (bar_width - int(percentage / 10))
+             full_line = f"[{task}] {pct_str} {p_str} {r_str} {jobs_colored} {errors_colored}"
+             
+        if len(clean_color(full_line)) >= term_width:
+             # Remove bar
+             full_line = f"{pct_str} {p_str} {r_str} {jobs_colored} {errors_colored}"
 
-        self.in_line(progress_bar)
+        self.in_line(full_line)
 
     def new_directories(self, directories):
         message = set_color(

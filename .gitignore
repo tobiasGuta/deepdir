@@ -13,3 +13,10 @@ build/
 .vscode/
 *.log
 .DS_Store
+*.session
+*.sqlite
+*.db
+.pytest_cache/
+.coverage
+htmlcov/
+

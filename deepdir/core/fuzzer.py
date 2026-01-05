@@ -253,12 +253,24 @@ class Fuzzer(BaseFuzzer):
             self._executor.shutdown(wait=False)
 
     def scan(self, path: str) -> None:
+        if self._quit_event.is_set():
+            return
+
         scanners = self.get_scanners_for(path)
         try:
             response = self._requester.request(path)
         except RequestException as e:
             for callback in self.error_callbacks:
                 callback(e)
+            return
+
+        if self._quit_event.is_set():
+            return
+
+        if not self._play_event.is_set():
+            self._play_event.wait()
+
+        if self._quit_event.is_set():
             return
 
         if not self.waf_detected:
@@ -429,6 +441,9 @@ class AsyncFuzzer(BaseFuzzer):
             for callback in self.error_callbacks:
                 callback(e)
             return
+
+        if not self._play_event.is_set():
+            await self._play_event.wait()
 
         if not self.waf_detected:
             if waf_name := WAF.detect(response):

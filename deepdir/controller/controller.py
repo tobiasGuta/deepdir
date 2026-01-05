@@ -192,7 +192,7 @@ class Controller:
         # error_callbacks callback values:
         #  - *args[0]: exception
         match_callbacks = (
-            self.match_callback, self.reporter.save, self.reset_consecutive_errors
+            self.match_callback, self.reporter.save, self.reset_consecutive_errors, self.update_progress_bar
         )
         not_found_callbacks = (
             self.update_progress_bar, self.reset_consecutive_errors, self.track_filtered
@@ -502,68 +502,74 @@ class Controller:
         logger.exception(exception)
 
     def handle_pause(self) -> None:
-        interface.warning(
-            "CTRL+C detected: Pausing threads, please wait...", do_save=False
-        )
-        self.fuzzer.pause()
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            interface.warning(
+                "CTRL+C detected: Pausing threads, please wait...", do_save=False
+            )
+            self.fuzzer.pause()
 
-        while True:
-            msg = "[q]uit / [c]ontinue"
+            while True:
+                msg = "[q]uit / [c]ontinue"
 
-            if len(self.directories) > 1:
-                msg += " / [n]ext"
+                if len(self.directories) > 1:
+                    msg += " / [n]ext"
 
-            if len(options.urls) > 1:
-                msg += " / [s]kip target"
+                if len(options.urls) > 1:
+                    msg += " / [s]kip target"
 
-            interface.in_line(msg + ": ")
-
-            option = input()
-
-            if option.lower() == "q":
-                interface.in_line("[s]ave / [q]uit without saving: ")
+                interface.in_line(msg + ": ")
 
                 option = input()
 
-                if option.lower() == "s":
-                    msg = f'Save to file [{options.session_file or DEFAULT_SESSION_FILE}]: '
+                if option.lower() == "q":
+                    interface.in_line("[s]ave / [q]uit without saving: ")
 
-                    interface.in_line(msg)
+                    option = input()
 
-                    session_file = (
-                        input() or options.session_file or DEFAULT_SESSION_FILE
-                    )
+                    if option.lower() == "s":
+                        msg = f'Save to file [{options.session_file or DEFAULT_SESSION_FILE}]: '
 
-                    self._export(session_file)
-                    quitexc = QuitInterrupt(f"Session saved to: {session_file}")
-                    if options.async_mode:
-                        self.pause_future.set_exception(quitexc)
-                        break
-                    else:
-                        raise quitexc
-                elif option.lower() == "q":
-                    quitexc = QuitInterrupt("Canceled by the user")
-                    if options.async_mode:
-                        self.pause_future.set_exception(quitexc)
-                        break
-                    else:
-                        raise quitexc
+                        interface.in_line(msg)
 
-            elif option.lower() == "c":
-                self.fuzzer.play()
-                break
+                        session_file = (
+                            input() or options.session_file or DEFAULT_SESSION_FILE
+                        )
 
-            elif option.lower() == "n" and len(self.directories) > 1:
-                self.fuzzer.quit()
-                break
+                        self._export(session_file)
+                        quitexc = QuitInterrupt(f"Session saved to: {session_file}")
+                        self.fuzzer.quit()
+                        if options.async_mode:
+                            self.pause_future.set_exception(quitexc)
+                            break
+                        else:
+                            raise quitexc
+                    elif option.lower() == "q":
+                        quitexc = QuitInterrupt("Canceled by the user")
+                        self.fuzzer.quit()
+                        if options.async_mode:
+                            self.pause_future.set_exception(quitexc)
+                            break
+                        else:
+                            raise quitexc
 
-            elif option.lower() == "s" and len(options.urls) > 1:
-                skipexc = SkipTargetInterrupt("Target skipped by the user")
-                if options.async_mode:
-                    self.pause_future.set_exception(skipexc)
+                elif option.lower() == "c":
+                    self.fuzzer.play()
                     break
-                else:
-                    raise skipexc
+
+                elif option.lower() == "n" and len(self.directories) > 1:
+                    self.fuzzer.quit()
+                    break
+
+                elif option.lower() == "s" and len(options.urls) > 1:
+                    skipexc = SkipTargetInterrupt("Target skipped by the user")
+                    if options.async_mode:
+                        self.pause_future.set_exception(skipexc)
+                        break
+                    else:
+                        raise skipexc
+        finally:
+            signal.signal(signal.SIGINT, lambda *_: self.handle_pause())
 
     def add_directory(self, path: str) -> None:
         """Add directory to the recursion queue"""
