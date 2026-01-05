@@ -62,6 +62,7 @@ class Dictionary:
     def __init__(self, files: list[str] = [], is_blacklist: bool = False) -> None:
         self._files = files
         self._is_blacklist = is_blacklist
+        self._lines_processed = 0
         self._generator = self.generate()
         self._extra = []
         self._extra_index = 0
@@ -80,8 +81,7 @@ class Dictionary:
 
     @property
     def index(self) -> int:
-        # This is an approximation for progress bars since we're streaming
-        return 0 
+        return self._lines_processed
 
     @locked
     def __next__(self) -> str:
@@ -205,6 +205,7 @@ class Dictionary:
             try:
                 with open(dict_file, "r", encoding="utf-8", errors="replace") as f:
                     for line in f:
+                        self._lines_processed += 1
                         for processed in self.process_line(line):
                             for transformed in self.apply_transformations(processed):
                                 final = self.apply_case(transformed)
@@ -238,6 +239,7 @@ class Dictionary:
         self._extra.append(path)
 
     def reset(self) -> None:
+        self._lines_processed = 0
         self._generator = self.generate()
         self._extra_index = 0
         self._extra.clear()

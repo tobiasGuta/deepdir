@@ -22,7 +22,7 @@ import asyncio
 import re
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Any, Callable, Generator
 
 from deepdir.connection.requester import AsyncRequester, BaseRequester, Requester
@@ -161,6 +161,7 @@ class Fuzzer(BaseFuzzer):
         self._quit_event = threading.Event()
         self._pause_semaphore = threading.Semaphore(0)
         self._executor = None
+        self._futures: list[Future] = []
 
     def setup_scanners(self) -> None:
         # Default scanners (wildcard testers)
@@ -223,33 +224,17 @@ class Fuzzer(BaseFuzzer):
         self._quit_event.clear()
         
         self._executor = ThreadPoolExecutor(max_workers=options.thread_count)
+        self._futures = []
         
         # Submit tasks to executor
         for _ in range(options.thread_count):
-            self._executor.submit(self.thread_proc)
+            self._futures.append(self._executor.submit(self.thread_proc))
 
     def is_finished(self) -> bool:
         if self._exc:
             raise self._exc
             
-        # This is a bit tricky with ThreadPoolExecutor as we don't have direct access to threads
-        # But we can check if dictionary is exhausted and if we are not paused
-        # For simplicity, we might need to rely on other signals or just check if executor has pending tasks
-        # However, since we are submitting long-running tasks (thread_proc loops), 
-        # we can't easily check if they are "done" individually until the whole scan is done.
-        
-        # A simple check is if the dictionary is empty. 
-        # But since we are streaming, we don't know if it's empty until StopIteration.
-        # The original logic checked if threads are alive.
-        # Here we can't easily do that without keeping futures.
-        
-        # Let's assume we are finished if we are shutting down or if all tasks completed.
-        # But thread_proc runs until dictionary is empty.
-        
-        # We can't easily check "is_alive" on executor threads.
-        # We will rely on the fact that thread_proc exits when dictionary is empty.
-        # So we need to track active threads.
-        return False # Placeholder, logic needs to be adapted for ThreadPoolExecutor if we want exact parity
+        return all(f.done() for f in self._futures)
 
     def play(self) -> None:
         self._play_event.set()
