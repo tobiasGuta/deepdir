@@ -1,6 +1,6 @@
 # DeepDir-CLI - Web Path Discovery (Modified Version)
 
-> **Note:** This is a highly modified version of the original [DeepDir](https://github.com/maurosoria/DeepDir). It has been enhanced with forensic-grade output, advanced WAF detection, and a completely modernized codebase for better performance and reliability.
+> **Note:** This is a highly modified version of the original [dirsearch](https://github.com/maurosoria/dirsearch). It has been enhanced with forensic-grade output, advanced WAF detection, and a completely modernized codebase for better performance and reliability.
 
 ## Key Features
 

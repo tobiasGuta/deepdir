@@ -71,6 +71,7 @@ class Config:
     network_interface: Optional[str] = None
     ip: Optional[str] = None
     exit_on_error: bool = False
+    bypass_waf: bool = False
     crawl: bool = False
     async_mode: bool = False
     full_url: bool = False
